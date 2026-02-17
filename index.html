@@ -483,11 +483,27 @@
                                 <th className="px-4 py-2 text-right font-semibold">売上計画</th>
                                 <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                 <th className="px-4 py-2 text-right font-semibold">限界利益</th>
+                                <th className="px-4 py-2 text-right font-semibold">限界利益計画</th>
+                                <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                 <th className="px-4 py-2 text-right font-semibold">時間当り採算</th>
+                                <th className="px-4 py-2 text-right font-semibold">時間当り採算計画</th>
+                                <th className="px-4 py-2 text-right font-semibold">達成率</th>
+                                <th className="px-4 py-2 text-right font-semibold">一人当り限界利益</th>
+                                <th className="px-4 py-2 text-right font-semibold">一人当り限界利益計画</th>
+                                <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {filteredData.sort((a,b) => new Date(a['月度']) - new Date(b['月度'])).map((row, idx) => (
+                                {filteredData.sort((a,b) => new Date(a['月度']) - new Date(b['月度'])).map((row, idx) => {
+                                const calcRate = (act, pln) => {
+                                    const a = parseValue(act);
+                                    const p = parseValue(pln);
+                                    return p ? ((a / p) * 100).toFixed(1) : '-';
+                                };
+                                const profitRate = calcRate(row['限界利益'], row['限界利益計画']);
+                                const hourlyRate = calcRate(row['時間当たり採算'], row['時間当たり採算計画']);
+                                const empRate = calcRate(row['一人当たり限界利益'], row['一人当たり限界利益計画']);
+                                return (
                                 <tr key={idx} className="bg-white hover:bg-gray-50">
                                     <td className="px-4 py-2 font-medium text-gray-900">{row['月度']}</td>
                                     <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['売上']))}</td>
@@ -498,9 +514,28 @@
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['限界利益']))}</td>
+                                    <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['限界利益計画']))}</td>
+                                    <td className="px-4 py-2 text-right">
+                                        <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(profitRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                            {profitRate !== '-' ? profitRate + '%' : '-'}
+                                        </span>
+                                    </td>
                                     <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['時間当たり採算']))}</td>
+                                    <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['時間当たり採算計画']))}</td>
+                                    <td className="px-4 py-2 text-right">
+                                        <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(hourlyRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                            {hourlyRate !== '-' ? hourlyRate + '%' : '-'}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['一人当たり限界利益']))}</td>
+                                    <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['一人当たり限界利益計画']))}</td>
+                                    <td className="px-4 py-2 text-right">
+                                        <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(empRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                            {empRate !== '-' ? empRate + '%' : '-'}
+                                        </span>
+                                    </td>
                                 </tr>
-                                ))}
+                                );})}
                             </tbody>
                             </table>
                         </div>
@@ -562,22 +597,62 @@
                                         <th className="px-4 py-2 font-semibold">年度</th>
                                         <th className="px-4 py-2 text-right font-semibold">売上</th>
                                         <th className="px-4 py-2 text-right font-semibold">売上計画</th>
+                                        <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                         <th className="px-4 py-2 text-right font-semibold">限界利益</th>
+                                        <th className="px-4 py-2 text-right font-semibold">限界利益計画</th>
+                                        <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                         <th className="px-4 py-2 text-right font-semibold">時間当り採算</th>
+                                        <th className="px-4 py-2 text-right font-semibold">時間当り採算計画</th>
+                                        <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                         <th className="px-4 py-2 text-right font-semibold">一人当り限界利益</th>
+                                        <th className="px-4 py-2 text-right font-semibold">一人当り限界利益計画</th>
+                                        <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100">
-                                        {[...filteredYearlyData].sort((a, b) => parseValue(a['年度']) - parseValue(b['年度'])).map((row, idx) => (
+                                        {[...filteredYearlyData].sort((a, b) => parseValue(a['年度']) - parseValue(b['年度'])).map((row, idx) => {
+                                        const calcRate = (act, pln) => {
+                                            const a = parseValue(act);
+                                            const p = parseValue(pln);
+                                            return p ? ((a / p) * 100).toFixed(1) : '-';
+                                        };
+                                        const salesRate = calcRate(row['売上'], row['売上計画']);
+                                        const profitRate = calcRate(row['限界利益'], row['限界利益計画']);
+                                        const hourlyRate = calcRate(row['時間当たり採算'], row['時間当たり採算計画']);
+                                        const empRate = calcRate(row['一人当たり限界利益'], row['一人当たり限界利益計画']);
+                                        return (
                                         <tr key={idx} className="bg-white hover:bg-gray-50">
                                             <td className="px-4 py-2 font-medium text-gray-900">{row['年度']}年度</td>
                                             <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['売上']))}</td>
                                             <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['売上計画']))}</td>
+                                            <td className="px-4 py-2 text-right">
+                                                <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(salesRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                                    {salesRate !== '-' ? salesRate + '%' : '-'}
+                                                </span>
+                                            </td>
                                             <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['限界利益']))}</td>
+                                            <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['限界利益計画']))}</td>
+                                            <td className="px-4 py-2 text-right">
+                                                <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(profitRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                                    {profitRate !== '-' ? profitRate + '%' : '-'}
+                                                </span>
+                                            </td>
                                             <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['時間当たり採算']))}</td>
+                                            <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['時間当たり採算計画']))}</td>
+                                            <td className="px-4 py-2 text-right">
+                                                <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(hourlyRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                                    {hourlyRate !== '-' ? hourlyRate + '%' : '-'}
+                                                </span>
+                                            </td>
                                             <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['一人当たり限界利益']))}</td>
+                                            <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['一人当たり限界利益計画']))}</td>
+                                            <td className="px-4 py-2 text-right">
+                                                <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(empRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                                    {empRate !== '-' ? empRate + '%' : '-'}
+                                                </span>
+                                            </td>
                                         </tr>
-                                        ))}
+                                        );})}
                                     </tbody>
                                     </table>
                                 </div>
@@ -624,7 +699,7 @@
                     <div className="flex-1 min-w-0">
                         {/* Header */}
                         <header className="bg-white border-b-2 border-gray-800 sticky top-0 z-20 no-print">
-                            <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+                            <div className="px-6 h-16 flex items-center justify-between">
                                 <div className="flex items-center gap-4">
                                     <div className="bg-gray-900 text-white p-1.5 flex items-center justify-center w-8 h-8 rounded">
                                         <TrendingUp size={20} />
@@ -684,7 +759,7 @@
                             </div>
                         </header>
 
-                        <main className="max-w-7xl mx-auto px-6 py-8">
+                        <main className="px-6 py-8">
                             {loading ? (
                                 <div className="flex justify-center items-center h-64">
                                     <div className="flex flex-col items-center gap-2">

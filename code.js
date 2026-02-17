@@ -10,12 +10,10 @@ function doGet() {
 
 /**
  * スプレッドシートからデータを取得する関数
- * シートID: 1rixfnihKdsfOyoCuxopCAo4O_JxmBuMcpVoM4Rfy3xU
  * シート名: 統合データ
  */
 function getData() {
-  // スプレッドシートID
-  const SPREADSHEET_ID = '1rixfnihKdsfOyoCuxopCAo4O_JxmBuMcpVoM4Rfy3xU';
+  const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
   const SHEET_NAME = '統合データ';
   
   try {
@@ -57,11 +55,10 @@ function getData() {
 
 /**
  * スプレッドシートから年度集計データを取得する関数
- * シートID: 1rixfnihKdsfOyoCuxopCAo4O_JxmBuMcpVoM4Rfy3xU
  * シート名: 年度集計
  */
 function getYearlyData() {
-  const SPREADSHEET_ID = '1rixfnihKdsfOyoCuxopCAo4O_JxmBuMcpVoM4Rfy3xU';
+  const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
   const SHEET_NAME = '年度集計';
 
   try {
