@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>経営実績レポート</title>
+
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel (JSX変換用) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap');
+        body { font-family: 'Noto Sans JP', sans-serif; background-color: #ffffff; }
+
+        /* 印刷設定 */
+        @media print {
+            .no-print { display: none !important; }
+            body { background-color: white; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page-break { break-inside: avoid; }
+            canvas { max-height: 250px !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef } = React;
+
+        // --- アイコンコンポーネント ---
+        const TrendingUp = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>;
+        const Printer = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>;
+        const ChevronDown = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>;
+        const CalendarIcon = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>;
+        const BarChartIcon = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>;
+
+        // --- Chart Component Wrapper ---
+        const ChartCanvas = ({ type, data, options }) => {
+            const canvasRef = useRef(null);
+            const chartRef = useRef(null);
+
+            useEffect(() => {
+                if (typeof window.Chart === 'undefined' || !canvasRef.current) return;
+                if (chartRef.current) chartRef.current.destroy();
+
+                const ctx = canvasRef.current.getContext('2d');
+                chartRef.current = new window.Chart(ctx, { type, data, options });
+
+                return () => { if (chartRef.current) chartRef.current.destroy(); };
+            }, [data, options, type]);
+
+            return <canvas ref={canvasRef} />;
+        };
+
+        // --- Main App Component ---
+        const App = () => {
+            const [rawData, setRawData] = useState([]);
+            const [yearlyRawData, setYearlyRawData] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+
+            // フィルタ状態
+            const [selectedDept, setSelectedDept] = useState("EB");
+            const [selectedYear, setSelectedYear] = useState("2025");
+
+            // ビューモード
+            const [viewMode, setViewMode] = useState("monthly");
+
+            // GASからデータ取得
+            useEffect(() => {
+                setLoading(true);
+                if (typeof google !== 'undefined' && google.script && google.script.run) {
+                    let monthlyDone = false;
+                    let yearlyDone = false;
+                    let monthlyErr = null;
+
+                    const checkDone = () => {
+                        if (monthlyDone && yearlyDone) {
+                            if (monthlyErr) setError(monthlyErr);
+                            setLoading(false);
+                        }
+                    };
+
+                    google.script.run
+                        .withSuccessHandler((data) => {
+                            if (!data || data.length === 0) {
+                                monthlyErr = "データが見つかりませんでした。スプレッドシートを確認してください。";
+                            } else {
+                                setRawData(data);
+                            }
+                            monthlyDone = true;
+                            checkDone();
+                        })
+                        .withFailureHandler((err) => {
+                            console.error(err);
+                            monthlyErr = "エラーが発生しました: " + err.message;
+                            monthlyDone = true;
+                            checkDone();
+                        })
+                        .getData();
+
+                    google.script.run
+                        .withSuccessHandler((data) => {
+                            if (data && data.length > 0) {
+                                setYearlyRawData(data);
+                            }
+                            yearlyDone = true;
+                            checkDone();
+                        })
+                        .withFailureHandler((err) => {
+                            console.error("年度集計データ取得エラー:", err);
+                            yearlyDone = true;
+                            checkDone();
+                        })
+                        .getYearlyData();
+                } else {
+                    setError("Google Apps Script環境外で実行されています。");
+                    setLoading(false);
+                }
+            }, []);
+
+            // 数値変換ユーティリティ
+            const parseValue = (val) => {
+                if (!val) return 0;
+                if (typeof val === 'number') return val;
+                const cleanVal = val.toString().replace(/[,\%￥\s]/g, '');
+                const num = parseFloat(cleanVal);
+                return isNaN(num) ? 0 : num;
+            };
+
+            const formatNumber = (num) => {
+                if (num === null || num === undefined || isNaN(num)) return '-';
+                return new Intl.NumberFormat('ja-JP').format(Math.round(num));
+            };
+
+            // フィルタリング処理（月次）
+            const filteredData = useMemo(() => {
+                if (!rawData.length) return [];
+
+                return rawData.filter(row => {
+                    if (!row['月度'] || !row['部署']) return false;
+
+                    const dateStr = row['月度'];
+                    const date = new Date(dateStr);
+                    if (isNaN(date.getTime())) return false;
+
+                    const rowYear = date.getFullYear();
+                    const rowMonth = date.getMonth() + 1;
+
+                    // 年度判定 (4月始まり)
+                    const fiscalYear = rowMonth < 4 ? rowYear - 1 : rowYear;
+
+                    if (fiscalYear.toString() !== selectedYear) return false;
+                    if (row['部署'] !== selectedDept) return false;
+
+                    // 2025年度の特別ルール: 2026年1月まで
+                    if (selectedYear === '2025') {
+                        if (rowYear === 2026 && rowMonth > 1) return false;
+                    }
+
+                    return true;
+                });
+            }, [rawData, selectedDept, selectedYear]);
+
+            // 年度別フィルタリング（部署のみ）
+            const filteredYearlyData = useMemo(() => {
+                if (!yearlyRawData.length) return [];
+                return yearlyRawData.filter(row => row['部署'] === selectedDept);
+            }, [yearlyRawData, selectedDept]);
+
+            // KPI集計
+            const kpi = useMemo(() => {
+                const sum = (key) => filteredData.reduce((acc, cur) => acc + parseValue(cur[key]), 0);
+
+                const totalSales = sum('売上');
+                const planSales = sum('売上計画');
+                const totalProfit = sum('限界利益');
+                const planProfit = sum('限界利益計画');
+
+                const count = filteredData.length || 1;
+                const rate = (act, pln) => pln ? ((act / pln) * 100).toFixed(1) : 0;
+
+                return {
+                    sales: { act: totalSales, pln: planSales, rate: rate(totalSales, planSales) },
+                    profit: { act: totalProfit, pln: planProfit, rate: rate(totalProfit, planProfit) },
+                    hourly: { act: Math.round(sum('時間当たり採算') / count), pln: Math.round(sum('時間当たり採算計画') / count), rate: rate(Math.round(sum('時間当たり採算') / count), Math.round(sum('時間当たり採算計画') / count)) },
+                    emp: { act: Math.round(sum('一人当たり限界利益') / count), pln: Math.round(sum('一人当たり限界利益計画') / count), rate: rate(Math.round(sum('一人当たり限界利益') / count), Math.round(sum('一人当たり限界利益計画') / count)) }
+                };
+            }, [filteredData]);
+
+            // リスト抽出
+            const { depts, years } = useMemo(() => {
+                const d = new Set();
+                const y = new Set();
+
+                if (rawData.length === 0) {
+                    y.add(2025);
+                    d.add("EB");
+                }
+
+                rawData.forEach(row => {
+                    if(row['部署']) d.add(row['部署']);
+                    if(row['月度']) {
+                        const date = new Date(row['月度']);
+                        if (!isNaN(date.getTime())) {
+                            const year = date.getMonth() < 3 ? date.getFullYear() - 1 : date.getFullYear();
+                            y.add(year);
+                        }
+                    }
+                });
+                return {
+                    depts: Array.from(d).sort(),
+                    years: Array.from(y).sort((a,b) => b - a)
+                };
+            }, [rawData]);
+
+            // 月次チャート設定
+            const createChartConfig = (title, dataKeyActual, dataKeyPlan) => {
+                const sortedData = [...filteredData].sort((a, b) => new Date(a['月度']) - new Date(b['月度']));
+
+                const labels = sortedData.map(d => {
+                    const date = new Date(d['月度']);
+                    return `${date.getMonth() + 1}月`;
+                });
+
+                const actuals = sortedData.map(d => parseValue(d[dataKeyActual]));
+                const plans = sortedData.map(d => parseValue(d[dataKeyPlan]));
+
+                return {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                type: 'line',
+                                label: '計画',
+                                data: plans,
+                                borderColor: '#2563eb',
+                                backgroundColor: '#2563eb',
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                tension: 0.1,
+                                fill: false,
+                                yAxisID: 'y',
+                                order: 1
+                            },
+                            {
+                                type: 'line',
+                                label: '実績',
+                                data: actuals,
+                                borderColor: '#dc2626',
+                                backgroundColor: '#dc2626',
+                                borderWidth: 2,
+                                pointRadius: 3,
+                                tension: 0.1,
+                                fill: false,
+                                yAxisID: 'y',
+                                order: 0
+                            }
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    usePointStyle: true,
+                                    boxWidth: 8,
+                                    font: { size: 11, family: "'Noto Sans JP', sans-serif" }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                titleColor: '#1f2937',
+                                bodyColor: '#1f2937',
+                                borderColor: '#e5e7eb',
+                                borderWidth: 1,
+                                padding: 10,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        if (context.parsed.y !== null) label += new Intl.NumberFormat('ja-JP').format(context.parsed.y);
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 10 }, color: '#4b5563' }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { borderDash: [2, 2], color: '#f3f4f6' },
+                                ticks: { font: { size: 10 }, color: '#9ca3af' }
+                            }
+                        }
+                    }
+                };
+            };
+
+            // 年度別チャート設定
+            const createYearlyChartConfig = (title, dataKeyActual, dataKeyPlan) => {
+                const sortedData = [...filteredYearlyData].sort((a, b) => {
+                    const yA = parseValue(a['年度']);
+                    const yB = parseValue(b['年度']);
+                    return yA - yB;
+                });
+
+                const labels = sortedData.map(d => `${d['年度']}年度`);
+                const actuals = sortedData.map(d => parseValue(d[dataKeyActual]));
+                const plans = sortedData.map(d => parseValue(d[dataKeyPlan]));
+
+                return {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            {
+                                type: 'line',
+                                label: '計画',
+                                data: plans,
+                                borderColor: '#2563eb',
+                                backgroundColor: '#2563eb',
+                                borderWidth: 2,
+                                pointRadius: 4,
+                                tension: 0.1,
+                                fill: false,
+                                yAxisID: 'y',
+                                order: 1
+                            },
+                            {
+                                type: 'line',
+                                label: '実績',
+                                data: actuals,
+                                borderColor: '#dc2626',
+                                backgroundColor: '#dc2626',
+                                borderWidth: 2,
+                                pointRadius: 4,
+                                tension: 0.1,
+                                fill: false,
+                                yAxisID: 'y',
+                                order: 0
+                            }
+                        ],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    usePointStyle: true,
+                                    boxWidth: 8,
+                                    font: { size: 11, family: "'Noto Sans JP', sans-serif" }
+                                }
+                            },
+                            tooltip: {
+                                backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                                titleColor: '#1f2937',
+                                bodyColor: '#1f2937',
+                                borderColor: '#e5e7eb',
+                                borderWidth: 1,
+                                padding: 10,
+                                callbacks: {
+                                    label: function(context) {
+                                        let label = context.dataset.label || '';
+                                        if (label) label += ': ';
+                                        if (context.parsed.y !== null) label += new Intl.NumberFormat('ja-JP').format(context.parsed.y);
+                                        return label;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 10 }, color: '#4b5563' }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                grid: { borderDash: [2, 2], color: '#f3f4f6' },
+                                ticks: { font: { size: 10 }, color: '#9ca3af' }
+                            }
+                        }
+                    }
+                };
+            };
+
+            const ScoreCard = ({ title, mainValue, subValue, achievementRate }) => {
+                const isPositive = achievementRate >= 100;
+                return (
+                    <div className="bg-white p-4 border border-gray-200 page-break">
+                        <h3 className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">{title}</h3>
+                        <div className="flex items-baseline gap-2 mb-1">
+                            <span className="text-2xl font-bold text-gray-900">{formatNumber(mainValue)}</span>
+                            <span className="text-xs text-gray-400">実績</span>
+                        </div>
+                        <div className="flex justify-between items-end border-t border-gray-100 pt-2 mt-2">
+                            <div className="flex flex-col">
+                                <span className="text-[10px] text-gray-400">計画</span>
+                                <span className="text-sm font-medium text-gray-600">{formatNumber(subValue)}</span>
+                            </div>
+                            <div className={`text-right ${isPositive ? 'text-blue-700' : 'text-red-600'}`}>
+                                <span className="text-sm font-bold">{achievementRate}%</span>
+                                <span className="text-[10px] block text-gray-400">達成率</span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            };
+
+            // 月次コンテンツ
+            const MonthlyContent = () => (
+                <>
+                    {/* Overview Section */}
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <span className="w-1.5 h-6 bg-blue-900 inline-block"></span>
+                                <span className="text-blue-900">{selectedDept}</span>
+                            </h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ScoreCard title="売上高" mainValue={kpi.sales.act} subValue={kpi.sales.pln} achievementRate={kpi.sales.rate} />
+                        <ScoreCard title="限界利益" mainValue={kpi.profit.act} subValue={kpi.profit.pln} achievementRate={kpi.profit.rate} />
+                        <ScoreCard title="時間当り採算" mainValue={kpi.hourly.act} subValue={kpi.hourly.pln} achievementRate={kpi.hourly.rate} />
+                        <ScoreCard title="一人当り限界利益" mainValue={kpi.emp.act} subValue={kpi.emp.pln} achievementRate={kpi.emp.rate} />
+                        </div>
+                    </div>
+
+                    {/* Charts Section */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10 page-break">
+                    {[
+                        { title: "売上推移", act: "売上", pln: "売上計画" },
+                        { title: "限界利益推移", act: "限界利益", pln: "限界利益計画" },
+                        { title: "時間当たり採算", act: "時間当たり採算", pln: "時間当たり採算計画" },
+                        { title: "一人当たり限界利益", act: "一人当たり限界利益", pln: "一人当たり限界利益計画" }
+                    ].map((item, idx) => {
+                        const config = createChartConfig(item.title, item.act, item.pln);
+                        return (
+                        <div key={idx} className="bg-white border border-gray-200 p-4 shadow-sm">
+                            <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                                <h4 className="font-bold text-gray-800 text-sm">
+                                    {item.title} <span className="font-normal text-gray-500 text-xs ml-1">(計画 vs 実績)</span>
+                                </h4>
+                            </div>
+                            <div className="relative h-[250px] w-full">
+                                <ChartCanvas type={config.type} data={config.data} options={config.options} />
+                            </div>
+                        </div>
+                        );
+                    })}
+                    </div>
+
+                    {/* Detail Table */}
+                    <div className="mt-8 page-break">
+                        <h3 className="font-bold text-gray-800 mb-4 text-sm border-l-4 border-gray-300 pl-3">月次詳細データ</h3>
+                        <div className="overflow-x-auto border border-gray-200">
+                            <table className="w-full text-sm text-left text-gray-600">
+                            <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b border-gray-200">
+                                <tr>
+                                <th className="px-4 py-2 font-semibold">月度</th>
+                                <th className="px-4 py-2 text-right font-semibold">売上</th>
+                                <th className="px-4 py-2 text-right font-semibold">売上計画</th>
+                                <th className="px-4 py-2 text-right font-semibold">達成率</th>
+                                <th className="px-4 py-2 text-right font-semibold">限界利益</th>
+                                <th className="px-4 py-2 text-right font-semibold">時間当り採算</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                                {filteredData.sort((a,b) => new Date(a['月度']) - new Date(b['月度'])).map((row, idx) => (
+                                <tr key={idx} className="bg-white hover:bg-gray-50">
+                                    <td className="px-4 py-2 font-medium text-gray-900">{row['月度']}</td>
+                                    <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['売上']))}</td>
+                                    <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['売上計画']))}</td>
+                                    <td className="px-4 py-2 text-right">
+                                        <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseValue(row['売上達成率']) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
+                                            {row['売上達成率']}
+                                        </span>
+                                    </td>
+                                    <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['限界利益']))}</td>
+                                    <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['時間当たり採算']))}</td>
+                                </tr>
+                                ))}
+                            </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </>
+            );
+
+            // 年度別コンテンツ
+            const YearlyContent = () => (
+                <>
+                    <div className="mb-8">
+                        <div className="flex items-center justify-between mb-4">
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <span className="w-1.5 h-6 bg-blue-900 inline-block"></span>
+                                <span className="text-blue-900">{selectedDept}</span>
+                                <span className="text-sm font-normal text-gray-500 ml-2">年度別推移</span>
+                            </h2>
+                        </div>
+                    </div>
+
+                    {filteredYearlyData.length === 0 ? (
+                        <div className="text-center py-20 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
+                            <p className="text-gray-500 font-medium">年度集計データがありません。</p>
+                            <p className="text-gray-400 text-sm mt-2">「年度集計」シートにデータが存在するか確認してください。</p>
+                        </div>
+                    ) : (
+                        <>
+                            {/* Yearly Charts */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10 page-break">
+                            {[
+                                { title: "売上推移", act: "売上", pln: "売上計画" },
+                                { title: "限界利益推移", act: "限界利益", pln: "限界利益計画" },
+                                { title: "時間当たり採算", act: "時間当たり採算", pln: "時間当たり採算計画" },
+                                { title: "一人当たり限界利益", act: "一人当たり限界利益", pln: "一人当たり限界利益計画" }
+                            ].map((item, idx) => {
+                                const config = createYearlyChartConfig(item.title, item.act, item.pln);
+                                return (
+                                <div key={idx} className="bg-white border border-gray-200 p-4 shadow-sm">
+                                    <div className="flex justify-between items-center mb-4 pb-2 border-b border-gray-100">
+                                        <h4 className="font-bold text-gray-800 text-sm">
+                                            {item.title} <span className="font-normal text-gray-500 text-xs ml-1">(計画 vs 実績)</span>
+                                        </h4>
+                                    </div>
+                                    <div className="relative h-[250px] w-full">
+                                        <ChartCanvas type={config.type} data={config.data} options={config.options} />
+                                    </div>
+                                </div>
+                                );
+                            })}
+                            </div>
+
+                            {/* Yearly Detail Table */}
+                            <div className="mt-8 page-break">
+                                <h3 className="font-bold text-gray-800 mb-4 text-sm border-l-4 border-gray-300 pl-3">年度別詳細データ</h3>
+                                <div className="overflow-x-auto border border-gray-200">
+                                    <table className="w-full text-sm text-left text-gray-600">
+                                    <thead className="text-xs text-gray-700 uppercase bg-gray-100 border-b border-gray-200">
+                                        <tr>
+                                        <th className="px-4 py-2 font-semibold">年度</th>
+                                        <th className="px-4 py-2 text-right font-semibold">売上</th>
+                                        <th className="px-4 py-2 text-right font-semibold">売上計画</th>
+                                        <th className="px-4 py-2 text-right font-semibold">限界利益</th>
+                                        <th className="px-4 py-2 text-right font-semibold">時間当り採算</th>
+                                        <th className="px-4 py-2 text-right font-semibold">一人当り限界利益</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {[...filteredYearlyData].sort((a, b) => parseValue(a['年度']) - parseValue(b['年度'])).map((row, idx) => (
+                                        <tr key={idx} className="bg-white hover:bg-gray-50">
+                                            <td className="px-4 py-2 font-medium text-gray-900">{row['年度']}年度</td>
+                                            <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['売上']))}</td>
+                                            <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['売上計画']))}</td>
+                                            <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['限界利益']))}</td>
+                                            <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['時間当たり採算']))}</td>
+                                            <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['一人当たり限界利益']))}</td>
+                                        </tr>
+                                        ))}
+                                    </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </>
+            );
+
+            return (
+                <div className="min-h-screen bg-white font-sans text-gray-800 flex">
+                    {/* Side Panel */}
+                    <aside className="no-print w-[200px] min-h-screen bg-gray-50 border-r border-gray-200 flex-shrink-0 sticky top-0 h-screen">
+                        <div className="p-4 border-b border-gray-200">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">表示切替</span>
+                        </div>
+                        <nav className="p-2">
+                            <button
+                                onClick={() => setViewMode("monthly")}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors ${
+                                    viewMode === "monthly"
+                                        ? "bg-gray-900 text-white"
+                                        : "text-gray-600 hover:bg-gray-200"
+                                }`}
+                            >
+                                <CalendarIcon size={16} />
+                                <span>年度内</span>
+                            </button>
+                            <button
+                                onClick={() => setViewMode("yearly")}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors mt-1 ${
+                                    viewMode === "yearly"
+                                        ? "bg-gray-900 text-white"
+                                        : "text-gray-600 hover:bg-gray-200"
+                                }`}
+                            >
+                                <BarChartIcon size={16} />
+                                <span>年度別</span>
+                            </button>
+                        </nav>
+                    </aside>
+
+                    {/* Main Content */}
+                    <div className="flex-1 min-w-0">
+                        {/* Header */}
+                        <header className="bg-white border-b-2 border-gray-800 sticky top-0 z-20 no-print">
+                            <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+                                <div className="flex items-center gap-4">
+                                    <div className="bg-gray-900 text-white p-1.5 flex items-center justify-center w-8 h-8 rounded">
+                                        <TrendingUp size={20} />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-lg font-bold text-gray-900 leading-none">経営実績レポート</h1>
+                                        <p className="text-xs text-gray-500 mt-0.5 font-mono">
+                                            {viewMode === "yearly"
+                                                ? "年度別推移"
+                                                : selectedYear === '2025'
+                                                    ? '2025/04/01 - 2026/01/31'
+                                                    : `${selectedYear}/04/01 - ${parseInt(selectedYear)+1}/03/31`
+                                            }
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-6">
+                                    {/* Filters */}
+                                    <div className="flex items-center gap-3">
+                                        {viewMode === "monthly" && (
+                                            <div className="relative">
+                                                <select
+                                                    className="appearance-none bg-gray-50 border border-gray-300 text-gray-700 py-1.5 pl-3 pr-8 rounded text-sm font-medium focus:outline-none focus:ring-1 focus:ring-gray-500"
+                                                    value={selectedYear}
+                                                    onChange={(e) => setSelectedYear(e.target.value)}
+                                                >
+                                                    {years.map(y => <option key={y} value={y}>{y}年度</option>)}
+                                                </select>
+                                                <div className="absolute right-2 top-2 pointer-events-none text-gray-500">
+                                                    <ChevronDown size={14} />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="relative">
+                                            <select
+                                                className="appearance-none bg-gray-50 border border-gray-300 text-gray-700 py-1.5 pl-3 pr-8 rounded text-sm font-medium focus:outline-none focus:ring-1 focus:ring-gray-500"
+                                                value={selectedDept}
+                                                onChange={(e) => setSelectedDept(e.target.value)}
+                                            >
+                                                {depts.map(d => <option key={d} value={d}>{d}</option>)}
+                                            </select>
+                                            <div className="absolute right-2 top-2 pointer-events-none text-gray-500">
+                                                <ChevronDown size={14} />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-6 w-px bg-gray-300"></div>
+
+                                    <button onClick={() => window.print()} className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors text-sm font-medium">
+                                        <Printer size={16} />
+                                        <span>印刷</span>
+                                    </button>
+                                </div>
+                            </div>
+                        </header>
+
+                        <main className="max-w-7xl mx-auto px-6 py-8">
+                            {loading ? (
+                                <div className="flex justify-center items-center h-64">
+                                    <div className="flex flex-col items-center gap-2">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+                                        <span className="text-sm text-gray-500">データを読み込み中...</span>
+                                    </div>
+                                </div>
+                            ) : error ? (
+                                 <div className="text-center py-20 bg-red-50 border border-dashed border-red-300 rounded-lg">
+                                    <p className="text-red-500 font-bold mb-2">エラーが発生しました</p>
+                                    <p className="text-red-400 text-sm">{error}</p>
+                                </div>
+                            ) : viewMode === "monthly" ? (
+                                filteredData.length === 0 ? (
+                                    <div className="text-center py-20 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
+                                        <p className="text-gray-500 font-medium">該当するデータがありません。</p>
+                                        <p className="text-gray-400 text-sm mt-2">スプレッドシートにデータが存在するか、<br/>またはフィルタ条件（{selectedYear}年度 / {selectedDept}）を確認してください。</p>
+                                    </div>
+                                ) : <MonthlyContent />
+                            ) : (
+                                <YearlyContent />
+                            )}
+                        </main>
+                    </div>
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
