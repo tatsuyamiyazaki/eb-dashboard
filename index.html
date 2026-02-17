@@ -480,16 +480,12 @@
                                 <tr>
                                 <th className="px-4 py-2 font-semibold">月度</th>
                                 <th className="px-4 py-2 text-right font-semibold">売上</th>
-                                <th className="px-4 py-2 text-right font-semibold">売上計画</th>
                                 <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                 <th className="px-4 py-2 text-right font-semibold">限界利益</th>
-                                <th className="px-4 py-2 text-right font-semibold">限界利益計画</th>
                                 <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                 <th className="px-4 py-2 text-right font-semibold">時間当り採算</th>
-                                <th className="px-4 py-2 text-right font-semibold">時間当り採算計画</th>
                                 <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                 <th className="px-4 py-2 text-right font-semibold">一人当り限界利益</th>
-                                <th className="px-4 py-2 text-right font-semibold">一人当り限界利益計画</th>
                                 <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                 </tr>
                             </thead>
@@ -507,28 +503,24 @@
                                 <tr key={idx} className="bg-white hover:bg-gray-50">
                                     <td className="px-4 py-2 font-medium text-gray-900">{row['月度']}</td>
                                     <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['売上']))}</td>
-                                    <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['売上計画']))}</td>
                                     <td className="px-4 py-2 text-right">
                                         <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseValue(row['売上達成率']) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                                             {row['売上達成率']}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['限界利益']))}</td>
-                                    <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['限界利益計画']))}</td>
                                     <td className="px-4 py-2 text-right">
                                         <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(profitRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                                             {profitRate !== '-' ? profitRate + '%' : '-'}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['時間当たり採算']))}</td>
-                                    <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['時間当たり採算計画']))}</td>
                                     <td className="px-4 py-2 text-right">
                                         <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(hourlyRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                                             {hourlyRate !== '-' ? hourlyRate + '%' : '-'}
                                         </span>
                                     </td>
                                     <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['一人当たり限界利益']))}</td>
-                                    <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['一人当たり限界利益計画']))}</td>
                                     <td className="px-4 py-2 text-right">
                                         <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(empRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                                             {empRate !== '-' ? empRate + '%' : '-'}
@@ -596,16 +588,12 @@
                                         <tr>
                                         <th className="px-4 py-2 font-semibold">年度</th>
                                         <th className="px-4 py-2 text-right font-semibold">売上</th>
-                                        <th className="px-4 py-2 text-right font-semibold">売上計画</th>
                                         <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                         <th className="px-4 py-2 text-right font-semibold">限界利益</th>
-                                        <th className="px-4 py-2 text-right font-semibold">限界利益計画</th>
                                         <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                         <th className="px-4 py-2 text-right font-semibold">時間当り採算</th>
-                                        <th className="px-4 py-2 text-right font-semibold">時間当り採算計画</th>
                                         <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                         <th className="px-4 py-2 text-right font-semibold">一人当り限界利益</th>
-                                        <th className="px-4 py-2 text-right font-semibold">一人当り限界利益計画</th>
                                         <th className="px-4 py-2 text-right font-semibold">達成率</th>
                                         </tr>
                                     </thead>
@@ -624,28 +612,24 @@
                                         <tr key={idx} className="bg-white hover:bg-gray-50">
                                             <td className="px-4 py-2 font-medium text-gray-900">{row['年度']}年度</td>
                                             <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['売上']))}</td>
-                                            <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['売上計画']))}</td>
                                             <td className="px-4 py-2 text-right">
                                                 <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(salesRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                                                     {salesRate !== '-' ? salesRate + '%' : '-'}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['限界利益']))}</td>
-                                            <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['限界利益計画']))}</td>
                                             <td className="px-4 py-2 text-right">
                                                 <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(profitRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                                                     {profitRate !== '-' ? profitRate + '%' : '-'}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['時間当たり採算']))}</td>
-                                            <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['時間当たり採算計画']))}</td>
                                             <td className="px-4 py-2 text-right">
                                                 <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(hourlyRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                                                     {hourlyRate !== '-' ? hourlyRate + '%' : '-'}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-2 text-right font-mono">{formatNumber(parseValue(row['一人当たり限界利益']))}</td>
-                                            <td className="px-4 py-2 text-right font-mono text-gray-400">{formatNumber(parseValue(row['一人当たり限界利益計画']))}</td>
                                             <td className="px-4 py-2 text-right">
                                                 <span className={`font-bold text-xs px-2 py-0.5 rounded ${parseFloat(empRate) >= 100 ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-600'}`}>
                                                     {empRate !== '-' ? empRate + '%' : '-'}
@@ -665,7 +649,7 @@
             return (
                 <div className="min-h-screen bg-white font-sans text-gray-800 flex">
                     {/* Side Panel */}
-                    <aside className="no-print w-[200px] min-h-screen bg-gray-50 border-r border-gray-200 flex-shrink-0 sticky top-0 h-screen">
+                    <aside className="no-print w-[200px] min-h-screen bg-gray-50 border-r border-gray-200 flex-shrink-0 fixed top-0 left-0 h-screen z-30">
                         <div className="p-4 border-b border-gray-200">
                             <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">表示切替</span>
                         </div>
@@ -696,7 +680,7 @@
                     </aside>
 
                     {/* Main Content */}
-                    <div className="flex-1 min-w-0">
+                    <div className="flex-1 min-w-0 ml-[200px] mx-auto" style={{maxWidth: '1400px'}}>
                         {/* Header */}
                         <header className="bg-white border-b-2 border-gray-800 sticky top-0 z-20 no-print">
                             <div className="px-6 h-16 flex items-center justify-between">
