@@ -218,6 +218,15 @@
                 return yearlyRawData.filter(row => row['部署'] === selectedDept);
             }, [yearlyRawData, selectedDept]);
 
+            // 年度計画データ（選択年度・部署に該当する行）
+            const yearlyPlan = useMemo(() => {
+                if (!yearlyRawData.length) return null;
+                return yearlyRawData.find(row =>
+                    row['部署'] === selectedDept &&
+                    String(row['年度']).trim() === selectedYear
+                ) || null;
+            }, [yearlyRawData, selectedDept, selectedYear]);
+
             // KPI集計
             const kpi = useMemo(() => {
                 const sum = (key) => filteredData.reduce((acc, cur) => acc + parseValue(cur[key]), 0);
@@ -230,13 +239,19 @@
                 const count = filteredData.length || 1;
                 const rate = (act, pln) => pln ? ((act / pln) * 100).toFixed(1) : 0;
 
+                // 年度計画値（年度集計シートから取得）
+                const yearPlanSales = yearlyPlan ? parseValue(yearlyPlan['売上計画']) : 0;
+                const yearPlanProfit = yearlyPlan ? parseValue(yearlyPlan['限界利益計画']) : 0;
+                const yearPlanHourly = yearlyPlan ? parseValue(yearlyPlan['時間当たり採算計画']) : 0;
+                const yearPlanEmp = yearlyPlan ? parseValue(yearlyPlan['一人当たり限界利益計画']) : 0;
+
                 return {
-                    sales: { act: totalSales, pln: planSales, rate: rate(totalSales, planSales) },
-                    profit: { act: totalProfit, pln: planProfit, rate: rate(totalProfit, planProfit) },
-                    hourly: { act: Math.round(sum('時間当たり採算') / count), pln: Math.round(sum('時間当たり採算計画') / count), rate: rate(Math.round(sum('時間当たり採算') / count), Math.round(sum('時間当たり採算計画') / count)) },
-                    emp: { act: Math.round(sum('一人当たり限界利益') / count), pln: Math.round(sum('一人当たり限界利益計画') / count), rate: rate(Math.round(sum('一人当たり限界利益') / count), Math.round(sum('一人当たり限界利益計画') / count)) }
+                    sales: { act: totalSales, pln: planSales, rate: rate(totalSales, planSales), yearPln: yearPlanSales, yearRate: rate(totalSales, yearPlanSales) },
+                    profit: { act: totalProfit, pln: planProfit, rate: rate(totalProfit, planProfit), yearPln: yearPlanProfit, yearRate: rate(totalProfit, yearPlanProfit) },
+                    hourly: { act: Math.round(sum('時間当たり採算') / count), pln: Math.round(sum('時間当たり採算計画') / count), rate: rate(Math.round(sum('時間当たり採算') / count), Math.round(sum('時間当たり採算計画') / count)), yearPln: yearPlanHourly, yearRate: rate(Math.round(sum('時間当たり採算') / count), yearPlanHourly) },
+                    emp: { act: Math.round(sum('一人当たり限界利益') / count), pln: Math.round(sum('一人当たり限界利益計画') / count), rate: rate(Math.round(sum('一人当たり限界利益') / count), Math.round(sum('一人当たり限界利益計画') / count)), yearPln: yearPlanEmp, yearRate: rate(Math.round(sum('一人当たり限界利益') / count), yearPlanEmp) }
                 };
-            }, [filteredData]);
+            }, [filteredData, yearlyPlan]);
 
             // リスト抽出
             const { depts, years } = useMemo(() => {
@@ -459,7 +474,10 @@
                     const rows = sorted.map(row => {
                         return `${row['月度']} | 売上: ${row['売上']}(計画: ${row['売上計画']}) | 限界利益: ${row['限界利益']}(計画: ${row['限界利益計画']}) | 時間当たり採算: ${row['時間当たり採算']}(計画: ${row['時間当たり採算計画']}) | 一人当たり限界利益: ${row['一人当たり限界利益']}(計画: ${row['一人当たり限界利益計画']})`;
                     }).join('\n');
-                    const kpiSummary = `\nKPI集計:\n売上 実績: ${formatNumber(kpi.sales.act)} / 計画: ${formatNumber(kpi.sales.pln)} / 達成率: ${kpi.sales.rate}%\n限界利益 実績: ${formatNumber(kpi.profit.act)} / 計画: ${formatNumber(kpi.profit.pln)} / 達成率: ${kpi.profit.rate}%\n時間当たり採算 実績: ${formatNumber(kpi.hourly.act)} / 計画: ${formatNumber(kpi.hourly.pln)} / 達成率: ${kpi.hourly.rate}%\n一人当たり限界利益 実績: ${formatNumber(kpi.emp.act)} / 計画: ${formatNumber(kpi.emp.pln)} / 達成率: ${kpi.emp.rate}%`;
+                    const yearPlanSummary = kpi.sales.yearPln > 0
+                        ? `\n年度計画（${selectedYear}年度）:\n売上 年度計画: ${formatNumber(kpi.sales.yearPln)} / 進捗率: ${kpi.sales.yearRate}%\n限界利益 年度計画: ${formatNumber(kpi.profit.yearPln)} / 進捗率: ${kpi.profit.yearRate}%\n時間当たり採算 年度計画: ${formatNumber(kpi.hourly.yearPln)} / 進捗率: ${kpi.hourly.yearRate}%\n一人当たり限界利益 年度計画: ${formatNumber(kpi.emp.yearPln)} / 進捗率: ${kpi.emp.yearRate}%`
+                        : '';
+                    const kpiSummary = `\nKPI集計:\n売上 実績: ${formatNumber(kpi.sales.act)} / 計画: ${formatNumber(kpi.sales.pln)} / 達成率: ${kpi.sales.rate}%\n限界利益 実績: ${formatNumber(kpi.profit.act)} / 計画: ${formatNumber(kpi.profit.pln)} / 達成率: ${kpi.profit.rate}%\n時間当たり採算 実績: ${formatNumber(kpi.hourly.act)} / 計画: ${formatNumber(kpi.hourly.pln)} / 達成率: ${kpi.hourly.rate}%\n一人当たり限界利益 実績: ${formatNumber(kpi.emp.act)} / 計画: ${formatNumber(kpi.emp.pln)} / 達成率: ${kpi.emp.rate}%` + yearPlanSummary;
                     return summary + rows + kpiSummary;
                 } else {
                     const sorted = [...filteredYearlyData].sort((a, b) => parseValue(a['年度']) - parseValue(b['年度']));
@@ -512,8 +530,9 @@
                 }
             };
 
-            const ScoreCard = ({ title, mainValue, subValue, achievementRate }) => {
+            const ScoreCard = ({ title, mainValue, subValue, achievementRate, yearPlan, yearProgressRate }) => {
                 const isPositive = achievementRate >= 100;
+                const hasYearPlan = yearPlan > 0;
                 return (
                     <div className="bg-white p-4 border border-gray-200 page-break">
                         <h3 className="text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">{title}</h3>
@@ -531,6 +550,18 @@
                                 <span className="text-[10px] block text-gray-400">達成率</span>
                             </div>
                         </div>
+                        {hasYearPlan && (
+                            <div className="flex justify-between items-end border-t border-gray-100 pt-2 mt-2">
+                                <div className="flex flex-col">
+                                    <span className="text-[10px] text-gray-400">年度計画</span>
+                                    <span className="text-sm font-medium text-gray-600">{formatNumber(yearPlan)}</span>
+                                </div>
+                                <div className={`text-right ${parseFloat(yearProgressRate) >= 100 ? 'text-blue-700' : 'text-amber-600'}`}>
+                                    <span className="text-sm font-bold">{yearProgressRate}%</span>
+                                    <span className="text-[10px] block text-gray-400">進捗率</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 );
             };
@@ -548,10 +579,10 @@
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <ScoreCard title="売上高" mainValue={kpi.sales.act} subValue={kpi.sales.pln} achievementRate={kpi.sales.rate} />
-                        <ScoreCard title="限界利益" mainValue={kpi.profit.act} subValue={kpi.profit.pln} achievementRate={kpi.profit.rate} />
-                        <ScoreCard title="時間当り採算" mainValue={kpi.hourly.act} subValue={kpi.hourly.pln} achievementRate={kpi.hourly.rate} />
-                        <ScoreCard title="一人当り限界利益" mainValue={kpi.emp.act} subValue={kpi.emp.pln} achievementRate={kpi.emp.rate} />
+                        <ScoreCard title="売上高" mainValue={kpi.sales.act} subValue={kpi.sales.pln} achievementRate={kpi.sales.rate} yearPlan={kpi.sales.yearPln} yearProgressRate={kpi.sales.yearRate} />
+                        <ScoreCard title="限界利益" mainValue={kpi.profit.act} subValue={kpi.profit.pln} achievementRate={kpi.profit.rate} yearPlan={kpi.profit.yearPln} yearProgressRate={kpi.profit.yearRate} />
+                        <ScoreCard title="時間当り採算" mainValue={kpi.hourly.act} subValue={kpi.hourly.pln} achievementRate={kpi.hourly.rate} yearPlan={kpi.hourly.yearPln} yearProgressRate={kpi.hourly.yearRate} />
+                        <ScoreCard title="一人当り限界利益" mainValue={kpi.emp.act} subValue={kpi.emp.pln} achievementRate={kpi.emp.rate} yearPlan={kpi.emp.yearPln} yearProgressRate={kpi.emp.yearRate} />
                         </div>
                     </div>
 
