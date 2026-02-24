@@ -46,6 +46,7 @@
         const ChatIcon = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
         const SendIcon = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>;
         const CloseIcon = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>;
+        const STRACIcon = ({ size }) => <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="8" height="20" rx="1"/><rect x="10" y="2" width="12" height="9" rx="1"/><rect x="10" y="11" width="12" height="11" rx="1"/></svg>;
 
         // --- Chart Component Wrapper ---
         const ChartCanvas = ({ type, data, options }) => {
@@ -468,7 +469,7 @@
 
             // 現在表示中のデータをコンテキストとして構築
             const buildDataContext = () => {
-                if (viewMode === "monthly") {
+                if (viewMode === "monthly" || viewMode === "strac") {
                     const sorted = [...filteredData].sort((a, b) => new Date(a['月度']) - new Date(b['月度']));
                     const summary = `部署: ${selectedDept} / ${selectedYear}年度（月次データ）\n`;
                     const rows = sorted.map(row => {
@@ -563,6 +564,271 @@
                             </div>
                         )}
                     </div>
+                );
+            };
+
+            // --- STRAC図コンポーネント ---
+            const STRACDiagram = ({ sales, marginalProfit, fixedCost = 0, operatingProfit = 0, label, height = 280, compact = false }) => {
+                if (!sales || sales <= 0) return (
+                    <div className="flex items-center justify-center text-gray-400 text-sm" style={{height: height + 'px'}}>データなし</div>
+                );
+
+                const variableCost = sales - marginalProfit;
+                const vcRatio = variableCost / sales * 100;
+                const mpRatio = marginalProfit / sales * 100;
+
+                const hasBreakdown = fixedCost > 0 || operatingProfit !== 0;
+                const fcInMpRatio = marginalProfit > 0 ? (fixedCost / marginalProfit * 100) : 0;
+                const opInMpRatio = marginalProfit > 0 ? (operatingProfit / marginalProfit * 100) : 0;
+                const isOpNegative = operatingProfit < 0;
+
+                // f/m値とランク
+                const fmValue = marginalProfit > 0 ? (fixedCost / marginalProfit * 100) : null;
+                const getFmRank = (fm) => {
+                    if (fm === null) return { label: '-', color: 'text-gray-400', bg: 'bg-gray-100' };
+                    if (fm <= 59) return { label: 'S', color: 'text-blue-700', bg: 'bg-blue-100' };
+                    if (fm <= 79) return { label: 'A', color: 'text-green-700', bg: 'bg-green-100' };
+                    if (fm <= 89) return { label: 'B', color: 'text-yellow-700', bg: 'bg-yellow-100' };
+                    if (fm <= 99) return { label: 'C', color: 'text-orange-700', bg: 'bg-orange-100' };
+                    if (fm <= 199) return { label: 'D', color: 'text-red-700', bg: 'bg-red-100' };
+                    return { label: 'DD', color: 'text-red-800', bg: 'bg-red-200' };
+                };
+                const fmRank = getFmRank(fmValue);
+
+                // 営業利益率
+                const opRate = sales > 0 ? (operatingProfit / sales * 100).toFixed(1) : '-';
+                // 固定費の対売上比
+                const fcRate = sales > 0 ? (fixedCost / sales * 100).toFixed(1) : '-';
+
+                // フォントサイズ統一
+                const sz = compact ? 'text-xs' : 'text-xs';
+                const szVal = compact ? 'text-xs' : 'text-xs';
+
+                // ツールチップ
+                const [tooltip, setTooltip] = React.useState(null);
+                const wrapperRef = useRef(null);
+
+                const showTooltip = (e, name, amount, rateLabel, rateValue, bgColor, textDark) => {
+                    const rect = wrapperRef.current.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    setTooltip({ x, y, name, amount, rateLabel, rateValue, bgColor, textDark });
+                };
+                const hideTooltip = () => setTooltip(null);
+
+                // ツールチップのテキスト色判定（明るい背景→黒、暗い背景→白）
+                const tooltipText = tooltip?.textDark ? 'text-gray-800' : 'text-white';
+
+                return (
+                    <div ref={wrapperRef} className="relative">
+                        {label && <p className={`font-bold text-gray-600 mb-2 text-center ${sz}`}>{label}</p>}
+                        <div className="flex rounded overflow-hidden" style={{height: height + 'px'}}>
+                            {/* 売上高 */}
+                            <div className="flex flex-col items-center justify-center"
+                                onMouseMove={(e) => showTooltip(e, '売上高', formatNumber(sales), '対売上比', '100.0%', '#38b6ff', true)}
+                                onMouseLeave={hideTooltip}
+                                style={{width: '30%', backgroundColor: '#38b6ff', cursor: 'default'}}>
+                                <span className={`font-bold text-gray-800 ${sz}`}>売上高</span>
+                                <span className={`font-bold text-gray-800 ${szVal}`}>{formatNumber(sales)}</span>
+                            </div>
+                            {/* 右側 */}
+                            <div className="flex flex-col" style={{width: '70%'}}>
+                                {/* 変動費 */}
+                                <div className="flex flex-col items-center justify-center"
+                                    onMouseMove={(e) => showTooltip(e, '変動費', formatNumber(variableCost), '対売上比', vcRatio.toFixed(1) + '%', '#e2a9f1', true)}
+                                    onMouseLeave={hideTooltip}
+                                    style={{height: vcRatio + '%', backgroundColor: '#e2a9f1', minHeight: compact ? '36px' : '48px', cursor: 'default'}}>
+                                    <span className={`font-bold text-gray-700 ${sz}`}>変動費</span>
+                                    <span className={`font-bold text-gray-700 ${szVal}`}>{formatNumber(variableCost)}</span>
+                                    <span className={`text-gray-600 ${szVal}`}>{vcRatio.toFixed(1)}%</span>
+                                </div>
+                                {/* 限界利益エリア */}
+                                <div className="flex" style={{height: mpRatio + '%', minHeight: compact ? '56px' : '80px'}}>
+                                    {/* 限界利益ラベル */}
+                                    <div className="flex flex-col items-center justify-center"
+                                        onMouseMove={(e) => showTooltip(e, '限界利益', formatNumber(marginalProfit), '対売上比', mpRatio.toFixed(1) + '%', '#c1ff72', true)}
+                                        onMouseLeave={hideTooltip}
+                                        style={{width: hasBreakdown ? '50%' : '100%', backgroundColor: '#c1ff72', cursor: 'default'}}>
+                                        <span className={`font-bold text-gray-700 ${sz}`}>限界利益</span>
+                                        <span className={`font-bold text-gray-700 ${szVal}`}>{formatNumber(marginalProfit)}</span>
+                                        <span className={`text-gray-600 ${szVal}`}>{mpRatio.toFixed(1)}%</span>
+                                    </div>
+                                    {/* 固定費 + 営業利益 */}
+                                    {hasBreakdown && (
+                                        <div className="flex flex-col" style={{width: '50%'}}>
+                                            {/* 固定費 */}
+                                            <div className="flex flex-col items-center justify-center"
+                                                onMouseMove={(e) => showTooltip(e, '固定費', formatNumber(fixedCost), '対売上比', fcRate + '%', '#d9d9d9', true)}
+                                                onMouseLeave={hideTooltip}
+                                                style={{height: Math.max(fcInMpRatio, 0) + '%', backgroundColor: '#d9d9d9', minHeight: compact ? '28px' : '38px', cursor: 'default'}}>
+                                                <span className={`font-bold text-gray-700 ${sz}`}>固定費</span>
+                                                <span className={`font-bold text-gray-700 ${szVal}`}>{formatNumber(fixedCost)}</span>
+                                            </div>
+                                            {/* 営業利益 */}
+                                            <div className="flex flex-col items-center justify-center"
+                                                onMouseMove={(e) => showTooltip(e, '営業利益', formatNumber(operatingProfit), '対売上比', opRate + '%', isOpNegative ? '#DC2626' : '#5ce1e6', !isOpNegative)}
+                                                onMouseLeave={hideTooltip}
+                                                style={{height: Math.max(Math.abs(opInMpRatio), 0) + '%', backgroundColor: isOpNegative ? '#DC2626' : '#5ce1e6', minHeight: compact ? '28px' : '38px', cursor: 'default'}}>
+                                                <span className={`font-bold ${isOpNegative ? 'text-white' : 'text-gray-700'} ${sz}`}>営業利益</span>
+                                                <span className={`font-bold ${isOpNegative ? 'text-white' : 'text-gray-700'} ${szVal}`}>{formatNumber(operatingProfit)}</span>
+                                                <span className={`${isOpNegative ? 'text-white/80' : 'text-gray-600'} ${szVal}`}>{opRate}%</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                        {/* f/m値・ランク */}
+                        <div className={`flex items-center justify-center gap-3 mt-2 ${sz}`}>
+                            {hasBreakdown && (
+                                <>
+                                    <span className="text-gray-500">f/m: <span className="font-bold text-gray-800">{fmValue !== null ? fmValue.toFixed(1) + '%' : '-'}</span></span>
+                                    <span className={`font-bold px-1.5 py-0.5 rounded ${fmRank.color} ${fmRank.bg} ${sz}`}>{fmRank.label}</span>
+                                </>
+                            )}
+                        </div>
+                        {/* ツールチップ（overflow-hiddenの外に配置） */}
+                        {tooltip && (
+                            <div className="absolute z-50 pointer-events-none text-xs rounded-lg px-3 py-2.5 shadow-lg border border-white/30"
+                                style={{
+                                    left: Math.min(tooltip.x + 14, (wrapperRef.current?.offsetWidth || 300) - 170),
+                                    top: Math.min(tooltip.y + 14, height - 10),
+                                    whiteSpace: 'nowrap',
+                                    backgroundColor: tooltip.bgColor,
+                                    color: tooltip.textDark ? '#1f2937' : '#ffffff'
+                                }}>
+                                <p className="font-bold text-sm mb-1">{tooltip.name}</p>
+                                <p>金額: <span className="font-mono font-bold">{tooltip.amount}</span></p>
+                                <p>{tooltip.rateLabel}: <span className="font-mono font-bold">{tooltip.rateValue}</span></p>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            // STRACコンテンツ
+            const STRACContent = () => {
+                const sortedData = [...filteredData].sort((a, b) => new Date(a['月度']) - new Date(b['月度']));
+
+                const totalSales = kpi.sales.act;
+                const totalProfit = kpi.profit.act;
+
+                // 固定費・営業利益の累計（月次データから集計）
+                const sumKey = (key) => filteredData.reduce((acc, cur) => acc + parseValue(cur[key]), 0);
+                const totalFixedCost = sumKey('固定費');
+                const totalOpProfit = sumKey('営業利益');
+
+                // 各種比率
+                const actualMpRate = totalSales > 0 ? (totalProfit / totalSales * 100).toFixed(1) : '-';
+                const actualVcRate = totalSales > 0 ? (100 - parseFloat(actualMpRate)).toFixed(1) : '-';
+                const actualOpRate = totalSales > 0 ? (totalOpProfit / totalSales * 100).toFixed(1) : '-';
+
+                // f/m値・ランク
+                const fmValue = totalProfit > 0 ? (totalFixedCost / totalProfit * 100) : null;
+                const getFmRank = (fm) => {
+                    if (fm === null) return { label: '-', color: 'text-gray-400', bg: 'bg-gray-100' };
+                    if (fm <= 59) return { label: 'S', color: 'text-blue-700', bg: 'bg-blue-100' };
+                    if (fm <= 79) return { label: 'A', color: 'text-green-700', bg: 'bg-green-100' };
+                    if (fm <= 89) return { label: 'B', color: 'text-yellow-700', bg: 'bg-yellow-100' };
+                    if (fm <= 99) return { label: 'C', color: 'text-orange-700', bg: 'bg-orange-100' };
+                    if (fm <= 199) return { label: 'D', color: 'text-red-700', bg: 'bg-red-100' };
+                    return { label: 'DD', color: 'text-red-800', bg: 'bg-red-200' };
+                };
+                const fmRank = getFmRank(fmValue);
+
+                return (
+                    <>
+                        <div className="mb-8">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                    <span className="w-1.5 h-6 bg-blue-900 inline-block"></span>
+                                    <span className="text-blue-900">{selectedDept}</span>
+                                    <span className="text-sm font-normal text-gray-500 ml-2">STRAC図 - {selectedYear}年度</span>
+                                </h2>
+                            </div>
+
+                            {/* サマリー指標 */}
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+                                <div className="bg-white border border-gray-200 p-3 rounded">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold">変動費率</span>
+                                    <p className="text-lg font-bold text-gray-900 mt-1">{actualVcRate}<span className="text-xs text-gray-400">%</span></p>
+                                </div>
+                                <div className="bg-white border border-gray-200 p-3 rounded">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold">限界利益率</span>
+                                    <p className="text-lg font-bold text-gray-900 mt-1">{actualMpRate}<span className="text-xs text-gray-400">%</span></p>
+                                </div>
+                                <div className="bg-white border border-gray-200 p-3 rounded">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold">固定費</span>
+                                    <p className="text-lg font-bold text-gray-900 mt-1">{formatNumber(totalFixedCost)}</p>
+                                </div>
+                                <div className="bg-white border border-gray-200 p-3 rounded">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold">営業利益</span>
+                                    <p className={`text-lg font-bold mt-1 ${totalOpProfit >= 0 ? 'text-gray-900' : 'text-red-600'}`}>{formatNumber(totalOpProfit)}</p>
+                                </div>
+                                <div className="bg-white border border-gray-200 p-3 rounded">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold">営業利益率</span>
+                                    <p className={`text-lg font-bold mt-1 ${parseFloat(actualOpRate) >= 0 ? 'text-gray-900' : 'text-red-600'}`}>{actualOpRate}<span className="text-xs text-gray-400">%</span></p>
+                                </div>
+                                <div className="bg-white border border-gray-200 p-3 rounded">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold">f/m値</span>
+                                    <div className="flex items-baseline gap-2 mt-1">
+                                        <p className="text-lg font-bold text-gray-900">{fmValue !== null ? fmValue.toFixed(1) : '-'}<span className="text-xs text-gray-400">%</span></p>
+                                        <span className={`font-bold text-sm px-2 py-0.5 rounded ${fmRank.color} ${fmRank.bg}`}>{fmRank.label}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* 累計 STRAC図 */}
+                            <h3 className="font-bold text-gray-800 mb-4 text-sm border-l-4 border-gray-300 pl-3">累計 STRAC図</h3>
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-10 page-break">
+                                <div className="bg-white border border-gray-200 p-5">
+                                    <div className="flex items-center gap-2 mb-4 pb-2 border-b border-gray-100">
+                                        <h4 className="font-bold text-gray-800 text-sm">累計実績</h4>
+                                        <span className="text-xs text-gray-400 ml-auto">{sortedData.length}ヶ月</span>
+                                    </div>
+                                    <STRACDiagram sales={totalSales} marginalProfit={totalProfit} fixedCost={totalFixedCost} operatingProfit={totalOpProfit} height={300} />
+                                </div>
+                            </div>
+
+                            {/* 月別STRAC図 */}
+                            <h3 className="font-bold text-gray-800 mb-4 text-sm border-l-4 border-gray-300 pl-3">月別 STRAC図</h3>
+                            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-10 page-break">
+                                {sortedData.map((row, idx) => {
+                                    const date = new Date(row['月度']);
+                                    const monthLabel = `${date.getMonth() + 1}月`;
+                                    const s = parseValue(row['売上']);
+                                    const mp = parseValue(row['限界利益']);
+                                    const fc = parseValue(row['固定費']);
+                                    const op = parseValue(row['営業利益']);
+                                    return (
+                                        <div key={idx} className="bg-white border border-gray-200 p-3">
+                                            <STRACDiagram sales={s} marginalProfit={mp} fixedCost={fc} operatingProfit={op} label={monthLabel} height={250} compact={true} />
+                                        </div>
+                                    );
+                                })}
+                            </div>
+
+                            {/* 年度別STRAC比較 */}
+                            {filteredYearlyData.length > 0 && (
+                                <div className="page-break">
+                                    <h3 className="font-bold text-gray-800 mb-4 text-sm border-l-4 border-gray-300 pl-3">年度別 STRAC図比較</h3>
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                                        {[...filteredYearlyData].sort((a, b) => parseValue(a['年度']) - parseValue(b['年度'])).map((row, idx) => {
+                                            const s = parseValue(row['売上']);
+                                            const mp = parseValue(row['限界利益']);
+                                            const fc = parseValue(row['固定費']);
+                                            const op = parseValue(row['営業利益']);
+                                            return (
+                                                <div key={idx} className="bg-white border border-gray-200 p-3">
+                                                    <STRACDiagram sales={s} marginalProfit={mp} fixedCost={fc} operatingProfit={op} label={`${row['年度']}年度`} height={240} compact={false} />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </>
                 );
             };
 
@@ -815,6 +1081,17 @@
                                 <BarChartIcon size={16} />
                                 <span>年度別</span>
                             </button>
+                            <button
+                                onClick={() => setViewMode("strac")}
+                                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded text-sm font-medium transition-colors mt-1 ${
+                                    viewMode === "strac"
+                                        ? "bg-gray-900 text-white"
+                                        : "text-gray-600 hover:bg-gray-200"
+                                }`}
+                            >
+                                <STRACIcon size={16} />
+                                <span>STRAC</span>
+                            </button>
                         </nav>
                     </aside>
 
@@ -832,9 +1109,11 @@
                                         <p className="text-xs text-gray-500 mt-0.5 font-mono">
                                             {viewMode === "yearly"
                                                 ? "年度別推移"
-                                                : selectedYear === '2025'
-                                                    ? '2025/04/01 - 2026/01/31'
-                                                    : `${selectedYear}/04/01 - ${parseInt(selectedYear)+1}/03/31`
+                                                : viewMode === "strac"
+                                                    ? `STRAC図 - ${selectedYear}年度`
+                                                    : selectedYear === '2025'
+                                                        ? '2025/04/01 - 2026/01/31'
+                                                        : `${selectedYear}/04/01 - ${parseInt(selectedYear)+1}/03/31`
                                             }
                                         </p>
                                     </div>
@@ -843,7 +1122,7 @@
                                 <div className="flex items-center gap-6">
                                     {/* Filters */}
                                     <div className="flex items-center gap-3">
-                                        {viewMode === "monthly" && (
+                                        {(viewMode === "monthly" || viewMode === "strac") && (
                                             <div className="relative">
                                                 <select
                                                     className="appearance-none bg-gray-50 border border-gray-300 text-gray-700 py-1.5 pl-3 pr-8 rounded text-sm font-medium focus:outline-none focus:ring-1 focus:ring-gray-500"
@@ -909,6 +1188,13 @@
                                         <p className="text-gray-400 text-sm mt-2">スプレッドシートにデータが存在するか、<br/>またはフィルタ条件（{selectedYear}年度 / {selectedDept}）を確認してください。</p>
                                     </div>
                                 ) : <MonthlyContent />
+                            ) : viewMode === "strac" ? (
+                                filteredData.length === 0 ? (
+                                    <div className="text-center py-20 bg-gray-50 border border-dashed border-gray-300 rounded-lg">
+                                        <p className="text-gray-500 font-medium">該当するデータがありません。</p>
+                                        <p className="text-gray-400 text-sm mt-2">スプレッドシートにデータが存在するか、<br/>またはフィルタ条件（{selectedYear}年度 / {selectedDept}）を確認してください。</p>
+                                    </div>
+                                ) : <STRACContent />
                             ) : (
                                 <YearlyContent />
                             )}
