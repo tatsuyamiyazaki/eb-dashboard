@@ -625,9 +625,9 @@
                         <div className="flex rounded overflow-hidden" style={{height: height + 'px'}}>
                             {/* 売上高 */}
                             <div className="flex flex-col items-center justify-center"
-                                onMouseMove={(e) => showTooltip(e, '売上高', formatNumber(sales), '対売上比', '100.0%', '#38b6ff', true)}
-                                onMouseLeave={hideTooltip}
-                                style={{width: '30%', backgroundColor: '#38b6ff', cursor: 'default'}}>
+                                 onMouseMove={(e) => showTooltip(e, '売上高', formatNumber(sales), '対売上比', '100.0%', '#38b6ff', true)}
+                                 onMouseLeave={hideTooltip}
+                                 style={{width: '30%', backgroundColor: '#38b6ff', cursor: 'default'}}>
                                 <span className={`font-bold text-gray-800 ${sz}`}>売上高</span>
                                 <span className={`font-bold text-gray-800 ${szVal}`}>{formatNumber(sales)}</span>
                             </div>
@@ -635,9 +635,9 @@
                             <div className="flex flex-col" style={{width: '70%'}}>
                                 {/* 変動費 */}
                                 <div className="flex flex-col items-center justify-center"
-                                    onMouseMove={(e) => showTooltip(e, '変動費', formatNumber(variableCost), '対売上比', vcRatio.toFixed(1) + '%', '#e2a9f1', true)}
-                                    onMouseLeave={hideTooltip}
-                                    style={{height: vcRatio + '%', backgroundColor: '#e2a9f1', minHeight: compact ? '36px' : '48px', cursor: 'default'}}>
+                                     onMouseMove={(e) => showTooltip(e, '変動費', formatNumber(variableCost), '対売上比', vcRatio.toFixed(1) + '%', '#e2a9f1', true)}
+                                     onMouseLeave={hideTooltip}
+                                     style={{height: vcRatio + '%', backgroundColor: '#e2a9f1', minHeight: compact ? '36px' : '48px', cursor: 'default'}}>
                                     <span className={`font-bold text-gray-700 ${sz}`}>変動費</span>
                                     <span className={`font-bold text-gray-700 ${szVal}`}>{formatNumber(variableCost)}</span>
                                     <span className={`text-gray-600 ${szVal}`}>{vcRatio.toFixed(1)}%</span>
@@ -646,9 +646,9 @@
                                 <div className="flex" style={{height: mpRatio + '%', minHeight: compact ? '56px' : '80px'}}>
                                     {/* 限界利益ラベル */}
                                     <div className="flex flex-col items-center justify-center"
-                                        onMouseMove={(e) => showTooltip(e, '限界利益', formatNumber(marginalProfit), '対売上比', mpRatio.toFixed(1) + '%', '#c1ff72', true)}
-                                        onMouseLeave={hideTooltip}
-                                        style={{width: hasBreakdown ? '50%' : '100%', backgroundColor: '#c1ff72', cursor: 'default'}}>
+                                         onMouseMove={(e) => showTooltip(e, '限界利益', formatNumber(marginalProfit), '対売上比', mpRatio.toFixed(1) + '%', '#c1ff72', true)}
+                                         onMouseLeave={hideTooltip}
+                                         style={{width: hasBreakdown ? '50%' : '100%', backgroundColor: '#c1ff72', cursor: 'default'}}>
                                         <span className={`font-bold text-gray-700 ${sz}`}>限界利益</span>
                                         <span className={`font-bold text-gray-700 ${szVal}`}>{formatNumber(marginalProfit)}</span>
                                         <span className={`text-gray-600 ${szVal}`}>{mpRatio.toFixed(1)}%</span>
@@ -658,17 +658,17 @@
                                         <div className="flex flex-col" style={{width: '50%'}}>
                                             {/* 固定費 */}
                                             <div className="flex flex-col items-center justify-center"
-                                                onMouseMove={(e) => showTooltip(e, '固定費', formatNumber(fixedCost), '対売上比', fcRate + '%', '#d9d9d9', true)}
-                                                onMouseLeave={hideTooltip}
-                                                style={{height: Math.max(fcInMpRatio, 0) + '%', backgroundColor: '#d9d9d9', minHeight: compact ? '28px' : '38px', cursor: 'default'}}>
+                                                 onMouseMove={(e) => showTooltip(e, '固定費', formatNumber(fixedCost), '対売上比', fcRate + '%', '#d9d9d9', true)}
+                                                 onMouseLeave={hideTooltip}
+                                                 style={{height: Math.max(fcInMpRatio, 0) + '%', backgroundColor: '#d9d9d9', minHeight: compact ? '28px' : '38px', cursor: 'default'}}>
                                                 <span className={`font-bold text-gray-700 ${sz}`}>固定費</span>
                                                 <span className={`font-bold text-gray-700 ${szVal}`}>{formatNumber(fixedCost)}</span>
                                             </div>
                                             {/* 営業利益 */}
                                             <div className="flex flex-col items-center justify-center"
-                                                onMouseMove={(e) => showTooltip(e, '営業利益', formatNumber(operatingProfit), '対売上比', opRate + '%', isOpNegative ? '#DC2626' : '#5ce1e6', !isOpNegative)}
-                                                onMouseLeave={hideTooltip}
-                                                style={{height: Math.max(Math.abs(opInMpRatio), 0) + '%', backgroundColor: isOpNegative ? '#DC2626' : '#5ce1e6', minHeight: compact ? '28px' : '38px', cursor: 'default'}}>
+                                                 onMouseMove={(e) => showTooltip(e, '営業利益', formatNumber(operatingProfit), '対売上比', opRate + '%', isOpNegative ? '#DC2626' : '#5ce1e6', !isOpNegative)}
+                                                 onMouseLeave={hideTooltip}
+                                                 style={{height: Math.max(Math.abs(opInMpRatio), 0) + '%', backgroundColor: isOpNegative ? '#DC2626' : '#5ce1e6', minHeight: compact ? '28px' : '38px', cursor: 'default'}}>
                                                 <span className={`font-bold ${isOpNegative ? 'text-white' : 'text-gray-700'} ${sz}`}>営業利益</span>
                                                 <span className={`font-bold ${isOpNegative ? 'text-white' : 'text-gray-700'} ${szVal}`}>{formatNumber(operatingProfit)}</span>
                                                 <span className={`${isOpNegative ? 'text-white/80' : 'text-gray-600'} ${szVal}`}>{opRate}%</span>
@@ -690,13 +690,13 @@
                         {/* ツールチップ（overflow-hiddenの外に配置） */}
                         {tooltip && (
                             <div className="absolute z-50 pointer-events-none text-xs rounded-lg px-3 py-2.5 shadow-lg border border-white/30"
-                                style={{
-                                    left: Math.min(tooltip.x + 14, (wrapperRef.current?.offsetWidth || 300) - 170),
-                                    top: Math.min(tooltip.y + 14, height - 10),
-                                    whiteSpace: 'nowrap',
-                                    backgroundColor: tooltip.bgColor,
-                                    color: tooltip.textDark ? '#1f2937' : '#ffffff'
-                                }}>
+                                 style={{
+                                     left: Math.min(tooltip.x + 14, (wrapperRef.current?.offsetWidth || 300) - 170),
+                                     top: Math.min(tooltip.y + 14, height - 10),
+                                     whiteSpace: 'nowrap',
+                                     backgroundColor: tooltip.bgColor,
+                                     color: tooltip.textDark ? '#1f2937' : '#ffffff'
+                                 }}>
                                 <p className="font-bold text-sm mb-1">{tooltip.name}</p>
                                 <p>金額: <span className="font-mono font-bold">{tooltip.amount}</span></p>
                                 <p>{tooltip.rateLabel}: <span className="font-mono font-bold">{tooltip.rateValue}</span></p>
@@ -787,6 +787,33 @@
                                         <span className="text-xs text-gray-400 ml-auto">{sortedData.length}ヶ月</span>
                                     </div>
                                     <STRACDiagram sales={totalSales} marginalProfit={totalProfit} fixedCost={totalFixedCost} operatingProfit={totalOpProfit} height={300} />
+                                </div>
+                                <div className="bg-white border border-gray-200 p-5 flex flex-col justify-center">
+                                    <h4 className="font-bold text-gray-800 text-sm mb-4">f/m値 ランク凡例</h4>
+                                    <p className="text-xs text-gray-500 mb-3">f/m値 = 固定費 ÷ 限界利益 × 100</p>
+                                    <div className="space-y-2">
+                                        {[
+                                            { rank: 'S', range: '59%以下', desc: '超優良企業', color: 'text-blue-700', bg: 'bg-blue-100' },
+                                            { rank: 'A', range: '60%〜79%', desc: '優良企業', color: 'text-green-700', bg: 'bg-green-100' },
+                                            { rank: 'B', range: '80%〜89%', desc: '普通企業', color: 'text-yellow-700', bg: 'bg-yellow-100' },
+                                            { rank: 'C', range: '90%〜99%', desc: '危険水域', color: 'text-orange-700', bg: 'bg-orange-100' },
+                                            { rank: 'D', range: '100%〜199%', desc: '赤字企業', color: 'text-red-700', bg: 'bg-red-100' },
+                                            { rank: 'DD', range: '200%以上', desc: '倒産路線', color: 'text-red-800', bg: 'bg-red-200' }
+                                        ].map((item) => (
+                                            <div key={item.rank} className={`flex items-center gap-3 px-3 py-2 rounded ${fmRank.label === item.rank ? 'ring-2 ring-gray-400 bg-gray-50' : ''}`}>
+                                                <span className={`font-bold text-sm w-8 text-center px-1.5 py-0.5 rounded ${item.color} ${item.bg}`}>{item.rank}</span>
+                                                <span className="text-xs text-gray-500 w-24">{item.range}</span>
+                                                <span className="text-xs font-medium text-gray-700">{item.desc}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <div className="mt-4 pt-3 border-t border-gray-100">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-gray-500">現在のf/m値:</span>
+                                            <span className="text-lg font-bold text-gray-800">{fmValue !== null ? fmValue.toFixed(1) + '%' : '-'}</span>
+                                            <span className={`font-bold text-sm px-2 py-0.5 rounded ${fmRank.color} ${fmRank.bg}`}>{fmRank.label}</span>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
