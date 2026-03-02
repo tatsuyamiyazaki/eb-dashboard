@@ -77,7 +77,7 @@ function getSystemPrompt() {
  * @param {string} dataContext 現在表示中のデータ（JSON文字列）
  * @returns {string} Geminiの応答テキスト
  */
-function chatWithGemini(userMessage, dataContext) {
+function chatWithGemini(userMessage, dataContext, selectedDept) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) {
     throw new Error('GEMINI_API_KEYがスクリプトプロパティに設定されていません。');
@@ -86,21 +86,27 @@ function chatWithGemini(userMessage, dataContext) {
   // 1. Googleドキュメントからベースとなるプロンプトを取得
   const basePrompt = getSystemPrompt();
 
-  // 2. スプレッドシートから全データを取得
-  const allMonthlyData = getData();       // 統合データ（月次）
-  const allYearlyData = getYearlyData();  // 年度集計
+  // 2. スプレッドシートから該当部署のデータのみ取得
+  const allMonthlyData = getData();
+  const allYearlyData = getYearlyData();
+  const deptMonthlyData = selectedDept
+    ? allMonthlyData.filter(row => row['部署'] === selectedDept)
+    : allMonthlyData;
+  const deptYearlyData = selectedDept
+    ? allYearlyData.filter(row => row['部署'] === selectedDept)
+    : allYearlyData;
 
-  // 3. プロンプトに表示中データ＋全データを結合する
+  // 3. プロンプトに選択部署のデータを結合する
   const systemPrompt = `${basePrompt}
 
 
 ---
-## 全月次データ（統合データシート）
-${JSON.stringify(allMonthlyData)}
+## ${selectedDept || '全部署'}の月次データ（統合データシート）
+${JSON.stringify(deptMonthlyData)}
 
 ---
-## 全年度集計データ（年度集計シート）
-${JSON.stringify(allYearlyData)}`;
+## ${selectedDept || '全部署'}の年度集計データ（年度集計シート）
+${JSON.stringify(deptYearlyData)}`;
 
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' + apiKey;
 

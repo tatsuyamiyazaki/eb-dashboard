@@ -562,7 +562,7 @@
                         setChatMessages(prev => [...prev, { role: 'ai', text: 'エラーが発生しました: ' + err.message }]);
                         setChatLoading(false);
                     })
-                    .chatWithGemini(msg, dataContext);
+                    .chatWithGemini(msg, dataContext, selectedDept);
             };
 
             // チャット中断
