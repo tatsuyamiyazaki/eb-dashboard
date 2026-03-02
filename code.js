@@ -86,12 +86,21 @@ function chatWithGemini(userMessage, dataContext) {
   // 1. Googleドキュメントからベースとなるプロンプトを取得
   const basePrompt = getSystemPrompt();
 
-  // 2. プロンプトに経営実績データ（dataContext）を結合する
+  // 2. スプレッドシートから全データを取得
+  const allMonthlyData = getData();       // 統合データ（月次）
+  const allYearlyData = getYearlyData();  // 年度集計
+
+  // 3. プロンプトに表示中データ＋全データを結合する
   const systemPrompt = `${basePrompt}
 
+
 ---
-## 経営実績データ
-${dataContext}`;
+## 全月次データ（統合データシート）
+${JSON.stringify(allMonthlyData)}
+
+---
+## 全年度集計データ（年度集計シート）
+${JSON.stringify(allYearlyData)}`;
 
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' + apiKey;
 
