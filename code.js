@@ -89,12 +89,17 @@ function chatWithGemini(userMessage, dataContext, selectedDept) {
   // 2. スプレッドシートから該当部署のデータのみ取得
   const allMonthlyData = getData();
   const allYearlyData = getYearlyData();
+  const allProjectData = getProjectData();
   const deptMonthlyData = selectedDept
     ? allMonthlyData.filter(row => row['部署'] === selectedDept)
     : allMonthlyData;
   const deptYearlyData = selectedDept
     ? allYearlyData.filter(row => row['部署'] === selectedDept)
     : allYearlyData;
+  const deptProjectData = selectedDept
+    ? allProjectData.filter(row => row['部署'] === selectedDept)
+    : allProjectData;
+
 
   // 3. プロンプトに選択部署のデータを結合する
   const systemPrompt = `${basePrompt}
@@ -106,7 +111,13 @@ ${JSON.stringify(deptMonthlyData)}
 
 ---
 ## ${selectedDept || '全部署'}の年度集計データ（年度集計シート）
-${JSON.stringify(deptYearlyData)}`;
+${JSON.stringify(deptYearlyData)}
+
+---
+## ${selectedDept || '全部署'}の案件実績集計データ（案件実績集計シート）
+${JSON.stringify(deptProjectData)}
+
+---`;
 
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' + apiKey;
 
@@ -158,6 +169,48 @@ ${JSON.stringify(deptYearlyData)}`;
 function getYearlyData() {
   const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
   const SHEET_NAME = '年度集計';
+
+  try {
+    const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(SHEET_NAME);
+
+    if (!sheet) {
+      throw new Error(`シート「${SHEET_NAME}」が見つかりません。`);
+    }
+
+    const data = sheet.getDataRange().getDisplayValues();
+
+    if (data.length < 2) {
+      return [];
+    }
+
+    const headers = data[0];
+    const rows = data.slice(1);
+
+    const formattedData = rows.map(row => {
+      let obj = {};
+      headers.forEach((header, index) => {
+        const key = header.trim();
+        obj[key] = row[index];
+      });
+      return obj;
+    });
+
+    return formattedData;
+
+  } catch (e) {
+    console.error(e);
+    throw e;
+  }
+}
+
+/**
+ * スプレッドシートから案件実績集計データを取得する関数
+ * シート名: 案件実績集計
+ */
+function getProjectData() {
+  const SPREADSHEET_ID = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
+  const SHEET_NAME = '案件実績集計';
 
   try {
     const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
