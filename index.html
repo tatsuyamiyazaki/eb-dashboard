@@ -515,6 +515,13 @@
                 }
             }, [chatMessages]);
 
+            // フィルタ変更時はチャット履歴をリセット（データ前提が変わるため）
+            useEffect(() => {
+                chatRequestId.current++;
+                setChatLoading(false);
+                setChatMessages([]);
+            }, [selectedDept, selectedYear, viewMode]);
+
             // 現在表示中のデータをコンテキストとして構築
             const buildDataContext = () => {
                 if (viewMode === "monthly" || viewMode === "strac") {
@@ -551,6 +558,16 @@
                 const currentId = ++chatRequestId.current;
                 const dataContext = buildDataContext();
 
+                // 履歴を構築（送信前の chatMessages をそのまま使う）
+                const MAX_TURNS = 6;
+                const historyForServer = chatMessages
+                    .filter(m => m && (m.role === 'user' || m.role === 'ai'))
+                    .map(m => ({
+                        role: m.role === 'ai' ? 'model' : 'user',
+                        text: m.text
+                    }))
+                    .slice(-MAX_TURNS * 2);
+
                 google.script.run
                     .withSuccessHandler((response) => {
                         if (chatRequestId.current !== currentId) return;
@@ -562,7 +579,7 @@
                         setChatMessages(prev => [...prev, { role: 'ai', text: 'エラーが発生しました: ' + err.message }]);
                         setChatLoading(false);
                     })
-                    .chatWithGemini(msg, dataContext, selectedDept);
+                    .chatWithGemini(msg, dataContext, selectedDept, JSON.stringify(historyForServer));
             };
 
             // チャット中断

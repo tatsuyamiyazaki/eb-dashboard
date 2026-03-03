@@ -72,12 +72,14 @@ function getSystemPrompt() {
 }
 
 /**
- * Gemini APIを使ってチャットメッセージに応答する関数
+ * Gemini APIを使ってチャットメッセージに応答する関数（systemInstruction + 履歴対応）
  * @param {string} userMessage ユーザーの入力メッセージ
- * @param {string} dataContext 現在表示中のデータ（JSON文字列）
+ * @param {string} dataContext 現在表示中のデータ（テキスト）
+ * @param {string} selectedDept 選択部署
+ * @param {string} historyJson [{"role":"user|model","text":"..."}...] のJSON文字列（任意）
  * @returns {string} Geminiの応答テキスト
  */
-function chatWithGemini(userMessage, dataContext, selectedDept) {
+function chatWithGemini(userMessage, dataContext, selectedDept, historyJson) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) {
     throw new Error('GEMINI_API_KEYがスクリプトプロパティに設定されていません。');
@@ -100,34 +102,54 @@ function chatWithGemini(userMessage, dataContext, selectedDept) {
     ? allProjectData.filter(row => row['部署'] === selectedDept)
     : allProjectData;
 
-
-  // 3. プロンプトに選択部署のデータを結合する
-  const systemPrompt = `${basePrompt}
-
+  // 3. systemInstruction（指示＋コンテキスト）を別フィールドで渡す
+  const systemInstructionText = `${basePrompt}
 
 ---
-## ${selectedDept || '全部署'}の月次データ（統合データシート）
+# 現在表示中の集計/コンテキスト（フロント）
+${dataContext || '(なし)'}
+---
+# 参照データ（${selectedDept || '全部署'}）
+## 月次データ（統合データシート）
 ${JSON.stringify(deptMonthlyData)}
-
----
-## ${selectedDept || '全部署'}の年度集計データ（年度集計シート）
+## 年度集計データ（年度集計シート）
 ${JSON.stringify(deptYearlyData)}
-
----
-## ${selectedDept || '全部署'}の案件実績集計データ（案件実績集計シート）
+## 案件実績集計データ（案件実績集計シート）
 ${JSON.stringify(deptProjectData)}
-
 ---`;
 
+  const systemInstruction = { parts: [{ text: systemInstructionText }] };
+
+  // 4. 履歴を contents に積む（直近N往復でトークン肥大化防止）
+  const MAX_TURNS = 6;
+  let history = [];
+  try {
+    history = historyJson ? JSON.parse(historyJson) : [];
+    if (!Array.isArray(history)) history = [];
+  } catch (e) {
+    history = [];
+  }
+  history = history.slice(-MAX_TURNS * 2);
+
+  const contents = [];
+  for (const m of history) {
+    if (!m) continue;
+    const roleRaw = String(m.role || '').toLowerCase();
+    const role = (roleRaw === 'model' || roleRaw === 'assistant' || roleRaw === 'ai') ? 'model' : 'user';
+    const text = (m.text != null) ? String(m.text) : '';
+    if (!text) continue;
+    contents.push({ role, parts: [{ text }] });
+  }
+
+  // 最新ユーザー入力
+  contents.push({ role: 'user', parts: [{ text: String(userMessage || '') }] });
+
+  // 5. リクエスト
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=' + apiKey;
 
   const payload = {
-    contents: [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt + '\n\n【質問】\n' + userMessage }]
-      }
-    ],
+    systemInstruction,
+    contents,
     generationConfig: {
       temperature: 0.7,
       maxOutputTokens: 8192
