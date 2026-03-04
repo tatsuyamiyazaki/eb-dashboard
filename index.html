@@ -522,29 +522,6 @@
                 setChatMessages([]);
             }, [selectedDept, selectedYear, viewMode]);
 
-            // 現在表示中のデータをコンテキストとして構築
-            const buildDataContext = () => {
-                if (viewMode === "monthly" || viewMode === "strac") {
-                    const sorted = [...filteredData].sort((a, b) => new Date(a['月度']) - new Date(b['月度']));
-                    const summary = `部署: ${selectedDept} / ${selectedYear}年度（月次データ）\n`;
-                    const rows = sorted.map(row => {
-                        return `${row['月度']} | 売上: ${row['売上']}(計画: ${row['売上計画']}) | 限界利益: ${row['限界利益']}(計画: ${row['限界利益計画']}) | 時間当たり採算: ${row['時間当たり採算']}(計画: ${row['時間当たり採算計画']}) | 一人当たり限界利益: ${row['一人当たり限界利益']}(計画: ${row['一人当たり限界利益計画']})`;
-                    }).join('\n');
-                    const yearPlanSummary = kpi.sales.yearPln > 0
-                        ? `\n年度計画（${selectedYear}年度）:\n売上 年度計画: ${formatNumber(kpi.sales.yearPln)} / 進捗率: ${kpi.sales.yearRate}%\n限界利益 年度計画: ${formatNumber(kpi.profit.yearPln)} / 進捗率: ${kpi.profit.yearRate}%\n時間当たり採算 年度計画: ${formatNumber(kpi.hourly.yearPln)} / 進捗率: ${kpi.hourly.yearRate}%\n一人当たり限界利益 年度計画: ${formatNumber(kpi.emp.yearPln)} / 進捗率: ${kpi.emp.yearRate}%`
-                        : '';
-                    const kpiSummary = `\nKPI集計:\n売上 実績: ${formatNumber(kpi.sales.act)} / 計画: ${formatNumber(kpi.sales.pln)} / 達成率: ${kpi.sales.rate}%\n限界利益 実績: ${formatNumber(kpi.profit.act)} / 計画: ${formatNumber(kpi.profit.pln)} / 達成率: ${kpi.profit.rate}%\n時間当たり採算 実績: ${formatNumber(kpi.hourly.act)} / 計画: ${formatNumber(kpi.hourly.pln)} / 達成率: ${kpi.hourly.rate}%\n一人当たり限界利益 実績: ${formatNumber(kpi.emp.act)} / 計画: ${formatNumber(kpi.emp.pln)} / 達成率: ${kpi.emp.rate}%` + yearPlanSummary;
-                    return summary + rows + kpiSummary;
-                } else {
-                    const sorted = [...filteredYearlyData].sort((a, b) => parseValue(a['年度']) - parseValue(b['年度']));
-                    const summary = `部署: ${selectedDept}（年度別データ）\n`;
-                    const rows = sorted.map(row => {
-                        return `${row['年度']}年度 | 売上: ${row['売上']}(計画: ${row['売上計画']}) | 限界利益: ${row['限界利益']}(計画: ${row['限界利益計画']}) | 時間当たり採算: ${row['時間当たり採算']}(計画: ${row['時間当たり採算計画']}) | 一人当たり限界利益: ${row['一人当たり限界利益']}(計画: ${row['一人当たり限界利益計画']})`;
-                    }).join('\n');
-                    return summary + rows;
-                }
-            };
-
             // チャット送信
             const sendChat = () => {
                 const msg = chatInput.trim();
@@ -556,7 +533,6 @@
                 setChatLoading(true);
 
                 const currentId = ++chatRequestId.current;
-                const dataContext = buildDataContext();
 
                 // 履歴を構築（送信前の chatMessages をそのまま使う）
                 const MAX_TURNS = 6;
@@ -579,7 +555,7 @@
                         setChatMessages(prev => [...prev, { role: 'ai', text: 'エラーが発生しました: ' + err.message }]);
                         setChatLoading(false);
                     })
-                    .chatWithGemini(msg, dataContext, selectedDept, JSON.stringify(historyForServer));
+                    .chatWithGemini(msg, selectedYear, selectedDept, JSON.stringify(historyForServer));
             };
 
             // チャット中断

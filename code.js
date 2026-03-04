@@ -74,12 +74,12 @@ function getSystemPrompt() {
 /**
  * Gemini APIを使ってチャットメッセージに応答する関数（systemInstruction + 履歴対応）
  * @param {string} userMessage ユーザーの入力メッセージ
- * @param {string} dataContext 現在表示中のデータ（テキスト）
+ * @param {string} selectedYear 選択年度
  * @param {string} selectedDept 選択部署
  * @param {string} historyJson [{"role":"user|model","text":"..."}...] のJSON文字列（任意）
  * @returns {string} Geminiの応答テキスト
  */
-function chatWithGemini(userMessage, dataContext, selectedDept, historyJson) {
+function chatWithGemini(userMessage, selectedYear, selectedDept, historyJson) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!apiKey) {
     throw new Error('GEMINI_API_KEYがスクリプトプロパティに設定されていません。');
@@ -106,14 +106,18 @@ function chatWithGemini(userMessage, dataContext, selectedDept, historyJson) {
   const systemInstructionText = `${basePrompt}
 
 ---
-# 現在表示中の集計/コンテキスト（フロント）
-${dataContext || '(なし)'}
+# 分析対象
+年度: ${selectedYear || '全年度'}
+部署: ${selectedDept || '全部署'}
+
 ---
-# 参照データ（${selectedDept || '全部署'}）
+# 参照データ
 ## 月次データ（統合データシート）
 ${JSON.stringify(deptMonthlyData)}
+
 ## 年度集計データ（年度集計シート）
 ${JSON.stringify(deptYearlyData)}
+
 ## 案件実績集計データ（案件実績集計シート）
 ${JSON.stringify(deptProjectData)}
 ---`;
